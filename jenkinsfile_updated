@@ -1,82 +1,88 @@
 pipeline {
     agent any
     
-    tools {
+     tools {
         jdk 'jdk17'
         maven 'maven3'
     }
-    environment {
+     environment {
         SCANNER_HOME= tool 'sonar-scanner'
     }
-    
-    stages {
-        stage('GIT--CHECKOUT') {
-            steps {
-               git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/VM2322/Boardgame.git'
-            }
-        }
-    
-                stage('MAVEN COMPILE') {
-            steps {
-                sh "mvn compile"
-            }
-        }
+
+
+stages{
+stage('GIT CHECKOUT') {
+steps{
+
+git branch: 'main', url: 'https://github.com/Nizam08/Vivek-s-Gaming-Application/'
+}
+   
+}
+
+stage('MAVEN COMPILE') {
+    steps{
         
-        stage('MAVEN TEST') {
-            steps {
-                sh "mvn test"
-            }
-        }
+        sh "mvn compile"
+    }
+}
+stage('MAVEN TEST') {
+    steps{
         
-        stage('TRIVY FILESYSTEM SCAN') {
+        sh "mvn test"
+    }
+}
+ 
+         stage('TRIVY FILESYSTEM SCAN') {
             steps {
                 sh "trivy fs --format table -o trivy-fs-report.html ."
             }
         }
-        
         stage('SONARQUBE ANALYSIS') {
             steps {
                 withSonarQubeEnv('sonar') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Calculator -Dsonar.projectKey=Calculator\
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Gaming -Dsonar.projectKey=Gaming\
                             -Dsonar.java.binaries=. '''
                 }
             }
         }
-        
-                stage('QUALITY GATE') {
+          stage('QUALITY GATE') {
             steps {
                 script {
-                  waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token' 
+                  waitForQualityGate abortPipeline: false, credentialsId: 'sonar' 
                 }
             }
         }
-        
         stage('MAVEN BUILD') {
             steps {
                sh "mvn package"
             }
         }
         
-       stage('BUILD & TAG DOCKER IMAGE') {
-            steps {
-               script {
-                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                            sh "docker build -t VM2322/gaming:latest ."
-                    }
-               }
+    stage('BUILD & TAG DOCKER IMAGE') {
+    steps {
+        script {
+            docker.withRegistry('https://index.docker.io/v1/', 'docker-credential') {
+                sh "echo your_password | sudo -S docker build -t nizamulhaq/gaming:latest ."
+                sh "echo your_password | sudo -S docker push nizamulhaq/gaming:latest"
             }
-        } 
-    
-             stage('IMAGE SCANNING') {
+        }
+    }
+}
+
+stage('IMAGE SCANNING') {
             steps {
-                sh "trivy image --format table -o trivy-image-report.html adijaiswal/boardshack:latest "
+                sh "trivy image --format table -o trivy-image-report.html nizamulhaq/gaming:latest "
             }
         }   
-            
         stage('DOCKER DEPLOYMENT') {
             steps {
-                sh "docker run -d -p 8090:8080 VM2322/gaming:latest"
+                sh "docker run -d -p 8092:8080 nizamulhaq/gaming:latest"
             }
         }   
-    }
+
+
+    
+             
+    
+}
 }
